@@ -100,7 +100,7 @@ function ScatterSvg() {
   );
 }
 
-const RENDERERS: Record<ChartType, () => JSX.Element> = {
+const RENDERERS: Record<ChartType, () => React.ReactElement> = {
   line: LineSvg,
   bar: BarSvg,
   pie: PieSvg,
