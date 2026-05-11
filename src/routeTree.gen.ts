@@ -20,6 +20,10 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as SuperAdminAdminsRouteImport } from './routes/super-admin.admins'
 import { Route as SalesNewRouteImport } from './routes/sales.new'
 import { Route as AdminUsersRouteImport } from './routes/admin.users'
+import { Route as AdminProductsRouteImport } from './routes/admin.products'
+import { Route as AdminInventoryRouteImport } from './routes/admin.inventory'
+import { Route as AdminExportRouteImport } from './routes/admin.export'
+import { Route as AdminApprovalsRouteImport } from './routes/admin.approvals'
 
 const SuperAdminRoute = SuperAdminRouteImport.update({
   id: '/super-admin',
@@ -76,6 +80,26 @@ const AdminUsersRoute = AdminUsersRouteImport.update({
   path: '/users',
   getParentRoute: () => AdminRoute,
 } as any)
+const AdminProductsRoute = AdminProductsRouteImport.update({
+  id: '/products',
+  path: '/products',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminInventoryRoute = AdminInventoryRouteImport.update({
+  id: '/inventory',
+  path: '/inventory',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminExportRoute = AdminExportRouteImport.update({
+  id: '/export',
+  path: '/export',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminApprovalsRoute = AdminApprovalsRouteImport.update({
+  id: '/approvals',
+  path: '/approvals',
+  getParentRoute: () => AdminRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -86,6 +110,10 @@ export interface FileRoutesByFullPath {
   '/profile': typeof ProfileRoute
   '/signup': typeof SignupRoute
   '/super-admin': typeof SuperAdminRouteWithChildren
+  '/admin/approvals': typeof AdminApprovalsRoute
+  '/admin/export': typeof AdminExportRoute
+  '/admin/inventory': typeof AdminInventoryRoute
+  '/admin/products': typeof AdminProductsRoute
   '/admin/users': typeof AdminUsersRoute
   '/sales/new': typeof SalesNewRoute
   '/super-admin/admins': typeof SuperAdminAdminsRoute
@@ -99,6 +127,10 @@ export interface FileRoutesByTo {
   '/profile': typeof ProfileRoute
   '/signup': typeof SignupRoute
   '/super-admin': typeof SuperAdminRouteWithChildren
+  '/admin/approvals': typeof AdminApprovalsRoute
+  '/admin/export': typeof AdminExportRoute
+  '/admin/inventory': typeof AdminInventoryRoute
+  '/admin/products': typeof AdminProductsRoute
   '/admin/users': typeof AdminUsersRoute
   '/sales/new': typeof SalesNewRoute
   '/super-admin/admins': typeof SuperAdminAdminsRoute
@@ -113,6 +145,10 @@ export interface FileRoutesById {
   '/profile': typeof ProfileRoute
   '/signup': typeof SignupRoute
   '/super-admin': typeof SuperAdminRouteWithChildren
+  '/admin/approvals': typeof AdminApprovalsRoute
+  '/admin/export': typeof AdminExportRoute
+  '/admin/inventory': typeof AdminInventoryRoute
+  '/admin/products': typeof AdminProductsRoute
   '/admin/users': typeof AdminUsersRoute
   '/sales/new': typeof SalesNewRoute
   '/super-admin/admins': typeof SuperAdminAdminsRoute
@@ -128,6 +164,10 @@ export interface FileRouteTypes {
     | '/profile'
     | '/signup'
     | '/super-admin'
+    | '/admin/approvals'
+    | '/admin/export'
+    | '/admin/inventory'
+    | '/admin/products'
     | '/admin/users'
     | '/sales/new'
     | '/super-admin/admins'
@@ -141,6 +181,10 @@ export interface FileRouteTypes {
     | '/profile'
     | '/signup'
     | '/super-admin'
+    | '/admin/approvals'
+    | '/admin/export'
+    | '/admin/inventory'
+    | '/admin/products'
     | '/admin/users'
     | '/sales/new'
     | '/super-admin/admins'
@@ -154,6 +198,10 @@ export interface FileRouteTypes {
     | '/profile'
     | '/signup'
     | '/super-admin'
+    | '/admin/approvals'
+    | '/admin/export'
+    | '/admin/inventory'
+    | '/admin/products'
     | '/admin/users'
     | '/sales/new'
     | '/super-admin/admins'
@@ -250,14 +298,50 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminUsersRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/admin/products': {
+      id: '/admin/products'
+      path: '/products'
+      fullPath: '/admin/products'
+      preLoaderRoute: typeof AdminProductsRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/inventory': {
+      id: '/admin/inventory'
+      path: '/inventory'
+      fullPath: '/admin/inventory'
+      preLoaderRoute: typeof AdminInventoryRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/export': {
+      id: '/admin/export'
+      path: '/export'
+      fullPath: '/admin/export'
+      preLoaderRoute: typeof AdminExportRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/approvals': {
+      id: '/admin/approvals'
+      path: '/approvals'
+      fullPath: '/admin/approvals'
+      preLoaderRoute: typeof AdminApprovalsRouteImport
+      parentRoute: typeof AdminRoute
+    }
   }
 }
 
 interface AdminRouteChildren {
+  AdminApprovalsRoute: typeof AdminApprovalsRoute
+  AdminExportRoute: typeof AdminExportRoute
+  AdminInventoryRoute: typeof AdminInventoryRoute
+  AdminProductsRoute: typeof AdminProductsRoute
   AdminUsersRoute: typeof AdminUsersRoute
 }
 
 const AdminRouteChildren: AdminRouteChildren = {
+  AdminApprovalsRoute: AdminApprovalsRoute,
+  AdminExportRoute: AdminExportRoute,
+  AdminInventoryRoute: AdminInventoryRoute,
+  AdminProductsRoute: AdminProductsRoute,
   AdminUsersRoute: AdminUsersRoute,
 }
 
