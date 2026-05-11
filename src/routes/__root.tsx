@@ -108,16 +108,16 @@ function RootShell({ children }: { children: React.ReactNode }) {
   );
 }
 
-import { RoleProvider } from "../lib/role";
+import { AuthProvider } from "../lib/auth";
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
 
   return (
     <QueryClientProvider client={queryClient}>
-      <RoleProvider>
+      <AuthProvider>
         <Outlet />
-      </RoleProvider>
+      </AuthProvider>
     </QueryClientProvider>
   );
 }

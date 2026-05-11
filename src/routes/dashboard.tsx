@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { DashboardShell } from "@/components/DashboardShell";
+import { AuthGuard } from "@/components/AuthGuard";
 import { ChartGrid, ChartPlaceholder } from "@/components/ChartPlaceholder";
 import { KpiCard, KpiGrid } from "@/components/KpiCard";
 import { getKpis } from "@/data/queries";
@@ -33,8 +34,10 @@ export function UserDashboardContent() {
 
 function UserDashboard() {
   return (
-    <DashboardShell title="User Dashboard">
-      <UserDashboardContent />
-    </DashboardShell>
+    <AuthGuard>
+      <DashboardShell title="User Dashboard">
+        <UserDashboardContent />
+      </DashboardShell>
+    </AuthGuard>
   );
 }

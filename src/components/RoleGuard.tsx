@@ -1,9 +1,7 @@
-import { Navigate } from "@tanstack/react-router";
-import { useRole, hasAccess, type Role } from "@/lib/role";
-import { ReactNode } from "react";
+import type { ReactNode } from "react";
+import { AuthGuard } from "./AuthGuard";
+import type { Role } from "@/lib/role";
 
 export function RoleGuard({ required, children }: { required: Role; children: ReactNode }) {
-  const { role } = useRole();
-  if (!hasAccess(role, required)) return <Navigate to="/dashboard" />;
-  return <>{children}</>;
+  return <AuthGuard required={required}>{children}</AuthGuard>;
 }

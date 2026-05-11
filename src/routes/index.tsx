@@ -1,6 +1,5 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { Link } from "@tanstack/react-router";
-import { useRole } from "@/lib/role";
+import { createFileRoute, Link, Navigate } from "@tanstack/react-router";
+import { useAuth } from "@/lib/auth";
 import { getKpis } from "@/data/queries";
 
 export const Route = createFileRoute("/")({
@@ -14,8 +13,10 @@ export const Route = createFileRoute("/")({
 });
 
 function Index() {
-  const { role, setRole } = useRole();
+  const { user, ready } = useAuth();
   const kpis = getKpis();
+  if (!ready) return null;
+  if (user) return <Navigate to="/dashboard" />;
   return (
     <div className="min-h-screen bg-background text-foreground">
       <div className="max-w-3xl mx-auto px-5 py-12 flex flex-col gap-8">
@@ -32,43 +33,23 @@ function Index() {
           </p>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-          {[
-            { r: "user" as const, t: "User", d: "Personal sales view" },
-            { r: "admin" as const, t: "Admin", d: "Team + user views" },
-            { r: "super_admin" as const, t: "Super Admin", d: "Full org access" },
-          ].map((opt) => (
-            <button
-              key={opt.r}
-              onClick={() => setRole(opt.r)}
-              className={`text-left rounded-lg border p-4 transition-colors ${
-                role === opt.r
-                  ? "border-primary bg-primary/5"
-                  : "border-border hover:border-primary/50"
-              }`}
-            >
-              <div className="font-semibold">{opt.t}</div>
-              <div className="text-xs text-muted-foreground mt-1">{opt.d}</div>
-            </button>
-          ))}
-        </div>
-
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <Link
-            to="/dashboard"
+            to="/login"
             className="rounded-md bg-primary text-primary-foreground px-4 py-2 text-sm font-medium"
           >
-            Enter dashboard →
+            Log in
           </Link>
-          {role !== "user" && (
-            <Link
-              to={role === "admin" ? "/admin" : "/super-admin"}
-              className="rounded-md border border-border px-4 py-2 text-sm font-medium"
-            >
-              Go to {role === "admin" ? "Admin" : "Super Admin"}
-            </Link>
-          )}
+          <Link
+            to="/signup"
+            className="rounded-md border border-border px-4 py-2 text-sm font-medium"
+          >
+            Create an account
+          </Link>
         </div>
+        <p className="text-xs text-muted-foreground">
+          The first account you create becomes Super Admin and can grant other roles.
+        </p>
       </div>
     </div>
   );
