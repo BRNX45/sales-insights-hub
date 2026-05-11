@@ -10,17 +10,25 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as SuperAdminRouteImport } from './routes/super-admin'
+import { Route as SignupRouteImport } from './routes/signup'
 import { Route as ProfileRouteImport } from './routes/profile'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as DashboardRouteImport } from './routes/dashboard'
+import { Route as CustomersRouteImport } from './routes/customers'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as SuperAdminAdminsRouteImport } from './routes/super-admin.admins'
+import { Route as SalesNewRouteImport } from './routes/sales.new'
 import { Route as AdminUsersRouteImport } from './routes/admin.users'
 
 const SuperAdminRoute = SuperAdminRouteImport.update({
   id: '/super-admin',
   path: '/super-admin',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SignupRoute = SignupRouteImport.update({
+  id: '/signup',
+  path: '/signup',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ProfileRoute = ProfileRouteImport.update({
@@ -38,6 +46,11 @@ const DashboardRoute = DashboardRouteImport.update({
   path: '/dashboard',
   getParentRoute: () => rootRouteImport,
 } as any)
+const CustomersRoute = CustomersRouteImport.update({
+  id: '/customers',
+  path: '/customers',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AdminRoute = AdminRouteImport.update({
   id: '/admin',
   path: '/admin',
@@ -53,6 +66,11 @@ const SuperAdminAdminsRoute = SuperAdminAdminsRouteImport.update({
   path: '/admins',
   getParentRoute: () => SuperAdminRoute,
 } as any)
+const SalesNewRoute = SalesNewRouteImport.update({
+  id: '/sales/new',
+  path: '/sales/new',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AdminUsersRoute = AdminUsersRouteImport.update({
   id: '/users',
   path: '/users',
@@ -62,32 +80,41 @@ const AdminUsersRoute = AdminUsersRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/admin': typeof AdminRouteWithChildren
+  '/customers': typeof CustomersRoute
   '/dashboard': typeof DashboardRoute
   '/login': typeof LoginRoute
   '/profile': typeof ProfileRoute
+  '/signup': typeof SignupRoute
   '/super-admin': typeof SuperAdminRouteWithChildren
   '/admin/users': typeof AdminUsersRoute
+  '/sales/new': typeof SalesNewRoute
   '/super-admin/admins': typeof SuperAdminAdminsRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/admin': typeof AdminRouteWithChildren
+  '/customers': typeof CustomersRoute
   '/dashboard': typeof DashboardRoute
   '/login': typeof LoginRoute
   '/profile': typeof ProfileRoute
+  '/signup': typeof SignupRoute
   '/super-admin': typeof SuperAdminRouteWithChildren
   '/admin/users': typeof AdminUsersRoute
+  '/sales/new': typeof SalesNewRoute
   '/super-admin/admins': typeof SuperAdminAdminsRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/admin': typeof AdminRouteWithChildren
+  '/customers': typeof CustomersRoute
   '/dashboard': typeof DashboardRoute
   '/login': typeof LoginRoute
   '/profile': typeof ProfileRoute
+  '/signup': typeof SignupRoute
   '/super-admin': typeof SuperAdminRouteWithChildren
   '/admin/users': typeof AdminUsersRoute
+  '/sales/new': typeof SalesNewRoute
   '/super-admin/admins': typeof SuperAdminAdminsRoute
 }
 export interface FileRouteTypes {
@@ -95,41 +122,53 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/admin'
+    | '/customers'
     | '/dashboard'
     | '/login'
     | '/profile'
+    | '/signup'
     | '/super-admin'
     | '/admin/users'
+    | '/sales/new'
     | '/super-admin/admins'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/admin'
+    | '/customers'
     | '/dashboard'
     | '/login'
     | '/profile'
+    | '/signup'
     | '/super-admin'
     | '/admin/users'
+    | '/sales/new'
     | '/super-admin/admins'
   id:
     | '__root__'
     | '/'
     | '/admin'
+    | '/customers'
     | '/dashboard'
     | '/login'
     | '/profile'
+    | '/signup'
     | '/super-admin'
     | '/admin/users'
+    | '/sales/new'
     | '/super-admin/admins'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AdminRoute: typeof AdminRouteWithChildren
+  CustomersRoute: typeof CustomersRoute
   DashboardRoute: typeof DashboardRoute
   LoginRoute: typeof LoginRoute
   ProfileRoute: typeof ProfileRoute
+  SignupRoute: typeof SignupRoute
   SuperAdminRoute: typeof SuperAdminRouteWithChildren
+  SalesNewRoute: typeof SalesNewRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -139,6 +178,13 @@ declare module '@tanstack/react-router' {
       path: '/super-admin'
       fullPath: '/super-admin'
       preLoaderRoute: typeof SuperAdminRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/signup': {
+      id: '/signup'
+      path: '/signup'
+      fullPath: '/signup'
+      preLoaderRoute: typeof SignupRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/profile': {
@@ -162,6 +208,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/customers': {
+      id: '/customers'
+      path: '/customers'
+      fullPath: '/customers'
+      preLoaderRoute: typeof CustomersRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/admin': {
       id: '/admin'
       path: '/admin'
@@ -182,6 +235,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/super-admin/admins'
       preLoaderRoute: typeof SuperAdminAdminsRouteImport
       parentRoute: typeof SuperAdminRoute
+    }
+    '/sales/new': {
+      id: '/sales/new'
+      path: '/sales/new'
+      fullPath: '/sales/new'
+      preLoaderRoute: typeof SalesNewRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/admin/users': {
       id: '/admin/users'
@@ -218,11 +278,24 @@ const SuperAdminRouteWithChildren = SuperAdminRoute._addFileChildren(
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AdminRoute: AdminRouteWithChildren,
+  CustomersRoute: CustomersRoute,
   DashboardRoute: DashboardRoute,
   LoginRoute: LoginRoute,
   ProfileRoute: ProfileRoute,
+  SignupRoute: SignupRoute,
   SuperAdminRoute: SuperAdminRouteWithChildren,
+  SalesNewRoute: SalesNewRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
