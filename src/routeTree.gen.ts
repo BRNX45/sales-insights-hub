@@ -17,7 +17,11 @@ import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as CustomersRouteImport } from './routes/customers'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as SuperAdminSettingsRouteImport } from './routes/super-admin.settings'
+import { Route as SuperAdminSecurityRouteImport } from './routes/super-admin.security'
+import { Route as SuperAdminBackupRouteImport } from './routes/super-admin.backup'
 import { Route as SuperAdminAdminsRouteImport } from './routes/super-admin.admins'
+import { Route as SuperAdminActivityRouteImport } from './routes/super-admin.activity'
 import { Route as SalesNewRouteImport } from './routes/sales.new'
 import { Route as AdminUsersRouteImport } from './routes/admin.users'
 import { Route as AdminProductsRouteImport } from './routes/admin.products'
@@ -65,9 +69,29 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const SuperAdminSettingsRoute = SuperAdminSettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
+  getParentRoute: () => SuperAdminRoute,
+} as any)
+const SuperAdminSecurityRoute = SuperAdminSecurityRouteImport.update({
+  id: '/security',
+  path: '/security',
+  getParentRoute: () => SuperAdminRoute,
+} as any)
+const SuperAdminBackupRoute = SuperAdminBackupRouteImport.update({
+  id: '/backup',
+  path: '/backup',
+  getParentRoute: () => SuperAdminRoute,
+} as any)
 const SuperAdminAdminsRoute = SuperAdminAdminsRouteImport.update({
   id: '/admins',
   path: '/admins',
+  getParentRoute: () => SuperAdminRoute,
+} as any)
+const SuperAdminActivityRoute = SuperAdminActivityRouteImport.update({
+  id: '/activity',
+  path: '/activity',
   getParentRoute: () => SuperAdminRoute,
 } as any)
 const SalesNewRoute = SalesNewRouteImport.update({
@@ -116,7 +140,11 @@ export interface FileRoutesByFullPath {
   '/admin/products': typeof AdminProductsRoute
   '/admin/users': typeof AdminUsersRoute
   '/sales/new': typeof SalesNewRoute
+  '/super-admin/activity': typeof SuperAdminActivityRoute
   '/super-admin/admins': typeof SuperAdminAdminsRoute
+  '/super-admin/backup': typeof SuperAdminBackupRoute
+  '/super-admin/security': typeof SuperAdminSecurityRoute
+  '/super-admin/settings': typeof SuperAdminSettingsRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -133,7 +161,11 @@ export interface FileRoutesByTo {
   '/admin/products': typeof AdminProductsRoute
   '/admin/users': typeof AdminUsersRoute
   '/sales/new': typeof SalesNewRoute
+  '/super-admin/activity': typeof SuperAdminActivityRoute
   '/super-admin/admins': typeof SuperAdminAdminsRoute
+  '/super-admin/backup': typeof SuperAdminBackupRoute
+  '/super-admin/security': typeof SuperAdminSecurityRoute
+  '/super-admin/settings': typeof SuperAdminSettingsRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -151,7 +183,11 @@ export interface FileRoutesById {
   '/admin/products': typeof AdminProductsRoute
   '/admin/users': typeof AdminUsersRoute
   '/sales/new': typeof SalesNewRoute
+  '/super-admin/activity': typeof SuperAdminActivityRoute
   '/super-admin/admins': typeof SuperAdminAdminsRoute
+  '/super-admin/backup': typeof SuperAdminBackupRoute
+  '/super-admin/security': typeof SuperAdminSecurityRoute
+  '/super-admin/settings': typeof SuperAdminSettingsRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -170,7 +206,11 @@ export interface FileRouteTypes {
     | '/admin/products'
     | '/admin/users'
     | '/sales/new'
+    | '/super-admin/activity'
     | '/super-admin/admins'
+    | '/super-admin/backup'
+    | '/super-admin/security'
+    | '/super-admin/settings'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -187,7 +227,11 @@ export interface FileRouteTypes {
     | '/admin/products'
     | '/admin/users'
     | '/sales/new'
+    | '/super-admin/activity'
     | '/super-admin/admins'
+    | '/super-admin/backup'
+    | '/super-admin/security'
+    | '/super-admin/settings'
   id:
     | '__root__'
     | '/'
@@ -204,7 +248,11 @@ export interface FileRouteTypes {
     | '/admin/products'
     | '/admin/users'
     | '/sales/new'
+    | '/super-admin/activity'
     | '/super-admin/admins'
+    | '/super-admin/backup'
+    | '/super-admin/security'
+    | '/super-admin/settings'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -277,11 +325,39 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/super-admin/settings': {
+      id: '/super-admin/settings'
+      path: '/settings'
+      fullPath: '/super-admin/settings'
+      preLoaderRoute: typeof SuperAdminSettingsRouteImport
+      parentRoute: typeof SuperAdminRoute
+    }
+    '/super-admin/security': {
+      id: '/super-admin/security'
+      path: '/security'
+      fullPath: '/super-admin/security'
+      preLoaderRoute: typeof SuperAdminSecurityRouteImport
+      parentRoute: typeof SuperAdminRoute
+    }
+    '/super-admin/backup': {
+      id: '/super-admin/backup'
+      path: '/backup'
+      fullPath: '/super-admin/backup'
+      preLoaderRoute: typeof SuperAdminBackupRouteImport
+      parentRoute: typeof SuperAdminRoute
+    }
     '/super-admin/admins': {
       id: '/super-admin/admins'
       path: '/admins'
       fullPath: '/super-admin/admins'
       preLoaderRoute: typeof SuperAdminAdminsRouteImport
+      parentRoute: typeof SuperAdminRoute
+    }
+    '/super-admin/activity': {
+      id: '/super-admin/activity'
+      path: '/activity'
+      fullPath: '/super-admin/activity'
+      preLoaderRoute: typeof SuperAdminActivityRouteImport
       parentRoute: typeof SuperAdminRoute
     }
     '/sales/new': {
@@ -348,11 +424,19 @@ const AdminRouteChildren: AdminRouteChildren = {
 const AdminRouteWithChildren = AdminRoute._addFileChildren(AdminRouteChildren)
 
 interface SuperAdminRouteChildren {
+  SuperAdminActivityRoute: typeof SuperAdminActivityRoute
   SuperAdminAdminsRoute: typeof SuperAdminAdminsRoute
+  SuperAdminBackupRoute: typeof SuperAdminBackupRoute
+  SuperAdminSecurityRoute: typeof SuperAdminSecurityRoute
+  SuperAdminSettingsRoute: typeof SuperAdminSettingsRoute
 }
 
 const SuperAdminRouteChildren: SuperAdminRouteChildren = {
+  SuperAdminActivityRoute: SuperAdminActivityRoute,
   SuperAdminAdminsRoute: SuperAdminAdminsRoute,
+  SuperAdminBackupRoute: SuperAdminBackupRoute,
+  SuperAdminSecurityRoute: SuperAdminSecurityRoute,
+  SuperAdminSettingsRoute: SuperAdminSettingsRoute,
 }
 
 const SuperAdminRouteWithChildren = SuperAdminRoute._addFileChildren(
