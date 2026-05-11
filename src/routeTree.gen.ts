@@ -14,6 +14,7 @@ import { Route as ProfileRouteImport } from './routes/profile'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as SuperAdminAdminsRouteImport } from './routes/super-admin.admins'
 import { Route as AdminUsersRouteImport } from './routes/admin.users'
 
 const SuperAdminRoute = SuperAdminRouteImport.update({
@@ -41,6 +42,11 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const SuperAdminAdminsRoute = SuperAdminAdminsRouteImport.update({
+  id: '/admins',
+  path: '/admins',
+  getParentRoute: () => SuperAdminRoute,
+} as any)
 const AdminUsersRoute = AdminUsersRouteImport.update({
   id: '/users',
   path: '/users',
@@ -52,16 +58,18 @@ export interface FileRoutesByFullPath {
   '/admin': typeof AdminRouteWithChildren
   '/dashboard': typeof DashboardRoute
   '/profile': typeof ProfileRoute
-  '/super-admin': typeof SuperAdminRoute
+  '/super-admin': typeof SuperAdminRouteWithChildren
   '/admin/users': typeof AdminUsersRoute
+  '/super-admin/admins': typeof SuperAdminAdminsRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/admin': typeof AdminRouteWithChildren
   '/dashboard': typeof DashboardRoute
   '/profile': typeof ProfileRoute
-  '/super-admin': typeof SuperAdminRoute
+  '/super-admin': typeof SuperAdminRouteWithChildren
   '/admin/users': typeof AdminUsersRoute
+  '/super-admin/admins': typeof SuperAdminAdminsRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -69,8 +77,9 @@ export interface FileRoutesById {
   '/admin': typeof AdminRouteWithChildren
   '/dashboard': typeof DashboardRoute
   '/profile': typeof ProfileRoute
-  '/super-admin': typeof SuperAdminRoute
+  '/super-admin': typeof SuperAdminRouteWithChildren
   '/admin/users': typeof AdminUsersRoute
+  '/super-admin/admins': typeof SuperAdminAdminsRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -81,6 +90,7 @@ export interface FileRouteTypes {
     | '/profile'
     | '/super-admin'
     | '/admin/users'
+    | '/super-admin/admins'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -89,6 +99,7 @@ export interface FileRouteTypes {
     | '/profile'
     | '/super-admin'
     | '/admin/users'
+    | '/super-admin/admins'
   id:
     | '__root__'
     | '/'
@@ -97,6 +108,7 @@ export interface FileRouteTypes {
     | '/profile'
     | '/super-admin'
     | '/admin/users'
+    | '/super-admin/admins'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -104,7 +116,7 @@ export interface RootRouteChildren {
   AdminRoute: typeof AdminRouteWithChildren
   DashboardRoute: typeof DashboardRoute
   ProfileRoute: typeof ProfileRoute
-  SuperAdminRoute: typeof SuperAdminRoute
+  SuperAdminRoute: typeof SuperAdminRouteWithChildren
 }
 
 declare module '@tanstack/react-router' {
@@ -144,6 +156,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/super-admin/admins': {
+      id: '/super-admin/admins'
+      path: '/admins'
+      fullPath: '/super-admin/admins'
+      preLoaderRoute: typeof SuperAdminAdminsRouteImport
+      parentRoute: typeof SuperAdminRoute
+    }
     '/admin/users': {
       id: '/admin/users'
       path: '/users'
@@ -164,12 +183,24 @@ const AdminRouteChildren: AdminRouteChildren = {
 
 const AdminRouteWithChildren = AdminRoute._addFileChildren(AdminRouteChildren)
 
+interface SuperAdminRouteChildren {
+  SuperAdminAdminsRoute: typeof SuperAdminAdminsRoute
+}
+
+const SuperAdminRouteChildren: SuperAdminRouteChildren = {
+  SuperAdminAdminsRoute: SuperAdminAdminsRoute,
+}
+
+const SuperAdminRouteWithChildren = SuperAdminRoute._addFileChildren(
+  SuperAdminRouteChildren,
+)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AdminRoute: AdminRouteWithChildren,
   DashboardRoute: DashboardRoute,
   ProfileRoute: ProfileRoute,
-  SuperAdminRoute: SuperAdminRoute,
+  SuperAdminRoute: SuperAdminRouteWithChildren,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
