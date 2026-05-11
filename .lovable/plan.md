@@ -1,90 +1,83 @@
+## Login + Role-Based Features
 
-# Sales Management System — Plan
+### Auth (no password, demo-style)
 
-A role-based sales management website with three dashboards. Each higher role sees the dashboards below it. Charts are seeded with the 124 sales transactions provided by your professor.
+Since you want **name + email only** (no password) and a Google button, the cleanest fit is to keep things frontend-only for now and skip real Supabase auth. Real auth requires passwords or OAuth redirects, and Google sign-in requires enabling Lovable Cloud + setting up a Google OAuth client.
 
-## Roles & Visibility
+**Proposed approach — Demo Auth (frontend-only):**
+- `/login` page: Full Name + Email fields → "Sign in"
+- `/signup` page: Full Name + Email → "Create account"
+- Google button: simulated (assigns a demo Google identity); a real Google login can be wired in a follow-up after enabling Lovable Cloud.
+- Accounts stored in `localStorage` (list of users with name, email, role).
+- Current session stored in `localStorage` too.
+- First user to register becomes `super_admin`. Subsequent users default to `user`. Super admin can promote others.
+- Role is **assigned per account**, replacing the role-switcher dropdown. (Super admin gets a hidden "Impersonate role" dev tool.)
 
-- **User** — sees only the User Dashboard.
-- **Admin** — sees Admin Dashboard + User Dashboard.
-- **Super Admin** — sees Super Admin Panel + Admin Dashboard + User Dashboard.
+If you instead want **real** Google login + secure accounts, say the word and I'll enable Lovable Cloud and switch to email-magic-link + Google OAuth (still no password).
 
-A header **role-switcher** dropdown toggles between the three roles (frontend-only, no real login). This is perfect for a class demo and can be swapped for real auth later.
-
-## Routes (TanStack Start)
+### New Routes
 
 ```
-/                  Landing + role switcher
-/dashboard         User Dashboard         (any role)
-/admin             Admin Dashboard        (admin, super_admin)
-/super-admin       Super Admin Panel      (super_admin)
+/login            Public — name + email + Google button
+/signup           Public — name + email + Google button
+/profile          Any logged-in user — edit own name/email
+/sales/new        Any logged-in user — add a sale
+/sales/$id/edit   Owner or admin+
+/customers       User — search customers/products
+/admin/users     Admin+ — list, add, edit, delete users
+/admin/products  Admin+ — manage products
+/admin/inventory Admin+ — manage inventory
+/admin/approvals Admin+ — approve sales
+/admin/export    Admin+ — export reports (CSV)
+/super-admin/admins      Super admin — manage admins
+/super-admin/settings    Super admin — system settings
+/super-admin/activity    Super admin — activity log
+/super-admin/backup      Super admin — backup/restore (mock)
+/super-admin/security    Super admin — security settings (mock)
 ```
 
-A pathless layout `_app` provides the shared shell (sidebar + header + role switcher). A simple `RoleGuard` redirects to `/` if the role is insufficient.
+### Permissions Matrix (enforced via `RoleGuard` + per-action checks)
 
-## Data Strategy
+| Capability | User | Admin | Super |
+|---|---|---|---|
+| Own sales CRUD | ✅ | ✅ | ✅ |
+| View all sales | ❌ | ✅ | ✅ |
+| Approve sales | ❌ | ✅ | ✅ |
+| Manage users (CRUD) | ❌ | ✅ | ✅ |
+| Manage products/inventory | ❌ | ✅ | ✅ |
+| Export reports | ❌ | ✅ | ✅ |
+| Create/edit admins | ❌ | ❌ | ✅ |
+| System settings, backup, activity log, security | ❌ | ❌ | ✅ |
 
-**Phase 1 — Static mock (now):**
-- File `src/data/sales.ts` containing all 124 transactions exactly as given (id, date, customer_id, product_id).
-- Helper functions (`src/data/queries.ts`) compute aggregates: sales-per-month, top customers, top products, repeat-customer ratios, etc.
-- Two known data quirks are kept as-is but flagged in a `data-notes.md` file: `TR000042` is dated `2020-10-25` (likely typo for 2010) and `TR000061`'s product code differs from your prof's pattern. The app uses the data verbatim; we won't silently "correct" it.
+### Data Model (localStorage, Phase 1)
 
-**Phase 2 — Real database (after professor shares customers + products tables):**
-- Enable Lovable Cloud.
-- Tables: `customers`, `products`, `sales` (matching the professor's schema).
-- Seed `sales` from the provided INSERTs; seed the other two when you receive them.
-- A small `useSalesSource()` hook switches charts from the static array to live queries — components don't change.
+- `users`: `{ id, fullName, email, role, createdAt }[]`
+- `session`: `{ userId }`
+- `sales`: existing 124 rows + new ones, each tagged with `ownerId` (legacy 124 owned by a seeded demo user)
+- `products`, `customers`, `inventory`, `activity_log`, `settings`: localStorage-backed
+- Switch to Lovable Cloud later — components use a single `useStore()` facade so nothing changes when we migrate.
 
-We'll start in Phase 1 immediately so the dashboards are visible and demo-ready today.
+### Components
 
-## Page Contents
+- `AuthProvider` + `useAuth()` — current user, login(name,email), signup, logout, googleSignIn (demo)
+- `AuthGuard` (logged-in required) and existing `RoleGuard`
+- `LoginForm`, `SignupForm`, `GoogleButton`
+- `UserTable`, `ProductTable`, `InventoryTable`, `ApprovalsList`, `ActivityLog`
+- `SaleForm` (add/edit)
+- `ProfilePage`
+- Header: replace demo role dropdown with **user avatar menu** (name, email, role badge, Logout). Keep dev-only role impersonator visible to super admin.
 
-Every dashboard includes the six required chart types as **placeholders** (titled cards with a stylized SVG preview, ready to be wired to a real chart library):
-- **Line** — Sales volume over time
-- **Bar** — Sales by product code
-- **Pie** — Share by product code group
-- **Funnel** — Customer journey (visited → purchased → repeat)
-- **Heat Map** — Day-of-week × month activity
-- **Scatter** — Customer transaction count vs. recency
+### Out of Scope (now)
 
-### User Dashboard (`/dashboard`)
-KPI cards: Total Transactions, Unique Customers, Unique Products, Latest Sale.
-Chart grid: the six chart types above, scoped to "my view".
+- Real Google OAuth (needs Lovable Cloud + Google credentials)
+- Password reset, email verification
+- Real database backup
+- Hard security (anyone could edit localStorage); fine for demo, not production
 
-### Admin Dashboard (`/admin`)
-Adds team-level KPIs (Repeat-Customer Rate, Best-selling Product, Avg Transactions/Customer).
-Tabs: **Admin View** | **User View** (embedded user dashboard).
+### Next Step
 
-### Super Admin Panel (`/super-admin`)
-Adds org-level KPIs (Quarterly Trend, Top Product Code, Customer Retention).
-Tabs: **Super Admin View** | **Admin View** | **User View**.
-
-A "Raw Data" table (paginated, searchable) is visible to Admin and Super Admin so you can show the professor the underlying 124 rows.
-
-## Components
-
-- `RoleProvider` + `useRole()` — current role in React context, persisted to localStorage.
-- `RoleSwitcher` — header dropdown.
-- `RoleGuard` — wraps protected routes.
-- `DashboardShell` — sidebar (filtered by role) + topbar.
-- `KpiCard` — metric card.
-- `ChartPlaceholder` — `type` prop renders one of the six chart styles using inline SVG (no chart library yet → light bundle, clean placeholders).
-- `ChartGrid` — responsive 2-col / 3-col layout, mobile-friendly (matches your 571px preview).
-- `SalesTable` — raw transaction table with search + pagination.
-
-## Design Direction
-
-Editorial, data-dense but calm. Deep navy background with a single warm amber accent for highlights and KPI deltas. Sharp grotesk display + neutral sans body. All colors as `oklch` semantic tokens in `src/styles.css` (no hard-coded hex). Mobile-first since the current preview is narrow.
-
-## Out of Scope (for now)
-
-- Real authentication (we use a demo switcher).
-- Real chart library (Recharts can be added in one follow-up once placeholders are approved).
-- Customer & Product tables (waiting on professor).
-
-## Next Step After Approval
-
-1. Build the role system + shell.
-2. Wire the 124 transactions into the data layer.
-3. Render all three dashboards with KPI cards + the six chart placeholders.
-4. Hand back so you can show the professor and decide whether to enable Lovable Cloud + add the missing tables.
+After approval I'll:
+1. Build AuthProvider + login/signup pages + Google demo button
+2. Wire AuthGuard across the app, replace role dropdown with user menu
+3. Build the new admin/super-admin pages and the User CRUD + Sale CRUD + Profile flows
+4. Seed legacy 124 sales to a demo user so charts keep working
