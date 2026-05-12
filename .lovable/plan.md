@@ -1,83 +1,56 @@
-## Login + Role-Based Features
+## Migrate SalesOS to Lovable Cloud
 
-### Auth (no password, demo-style)
+Lovable Cloud is now enabled. I'll replace the localStorage store with a real Postgres database, real authentication (email + Google), and row-level security so data persists and syncs across devices.
 
-Since you want **name + email only** (no password) and a Google button, the cleanest fit is to keep things frontend-only for now and skip real Supabase auth. Real auth requires passwords or OAuth redirects, and Google sign-in requires enabling Lovable Cloud + setting up a Google OAuth client.
+### Database schema (Postgres migration)
 
-**Proposed approach — Demo Auth (frontend-only):**
-- `/login` page: Full Name + Email fields → "Sign in"
-- `/signup` page: Full Name + Email → "Create account"
-- Google button: simulated (assigns a demo Google identity); a real Google login can be wired in a follow-up after enabling Lovable Cloud.
-- Accounts stored in `localStorage` (list of users with name, email, role).
-- Current session stored in `localStorage` too.
-- First user to register becomes `super_admin`. Subsequent users default to `user`. Super admin can promote others.
-- Role is **assigned per account**, replacing the role-switcher dropdown. (Super admin gets a hidden "Impersonate role" dev tool.)
+- `app_role` enum: `user | admin | super_admin`
+- `profiles` — `id (uuid, references auth.users)`, `full_name`, `email`, `created_at`. Auto-created via trigger on signup.
+- `user_roles` — `(user_id, role)` pair, separate table (never on profiles). Includes a `has_role(uid, role)` SECURITY DEFINER function for RLS.
+- `products` — `id text PK`, `name`, `price`, `category`.
+- `customers` — `id text PK`, `name`, `email`.
+- `inventory` — `product_id PK FK`, `stock`.
+- `sales` — `id text PK`, `date`, `customer_id`, `product_id`, `owner_id (uuid)`, `approved boolean`, `created_at`.
+- `activity_log` — `id, at, actor_id, actor_email, action`.
+- `settings` — single-row table (`id=1`), company name, maintenance, allow_signups, password_policy.
+- First registered user is promoted to `super_admin` (trigger checks if `user_roles` is empty).
+- Seeds the 124 professor-provided transactions, derived products/customers/inventory, and default settings.
 
-If you instead want **real** Google login + secure accounts, say the word and I'll enable Lovable Cloud and switch to email-magic-link + Google OAuth (still no password).
+### RLS policies (summary)
 
-### New Routes
+- `profiles`: each user reads/updates own; admins read all.
+- `user_roles`: users read own; only super_admin can insert/update/delete.
+- `sales`: all authenticated users read; users insert/update/delete only their own; admins/super_admin do anything; only admin+ can flip `approved`.
+- `products`, `customers`, `inventory`: all authenticated read; admin+ write.
+- `activity_log`: admin+ read; anyone authenticated insert their own row.
+- `settings`: all authenticated read; only super_admin update.
 
-```
-/login            Public — name + email + Google button
-/signup           Public — name + email + Google button
-/profile          Any logged-in user — edit own name/email
-/sales/new        Any logged-in user — add a sale
-/sales/$id/edit   Owner or admin+
-/customers       User — search customers/products
-/admin/users     Admin+ — list, add, edit, delete users
-/admin/products  Admin+ — manage products
-/admin/inventory Admin+ — manage inventory
-/admin/approvals Admin+ — approve sales
-/admin/export    Admin+ — export reports (CSV)
-/super-admin/admins      Super admin — manage admins
-/super-admin/settings    Super admin — system settings
-/super-admin/activity    Super admin — activity log
-/super-admin/backup      Super admin — backup/restore (mock)
-/super-admin/security    Super admin — security settings (mock)
-```
+### Auth
 
-### Permissions Matrix (enforced via `RoleGuard` + per-action checks)
+- Real Supabase auth via `@/integrations/supabase/client`.
+- Email + password signup/login (replacing the passwordless demo, since real DB auth requires it).
+- **Google Sign-In** via `lovable.auth.signInWithOAuth("google", …)` (Lovable Cloud managed — no API keys needed).
+- Auto-confirm email **off** by default (users verify email). I'll mention this so you can flip it if you want instant signups during the demo.
+- `AuthProvider` rewritten to wrap `supabase.auth.onAuthStateChange` + `getSession` and to load profile + role from the DB.
 
-| Capability | User | Admin | Super |
-|---|---|---|---|
-| Own sales CRUD | ✅ | ✅ | ✅ |
-| View all sales | ❌ | ✅ | ✅ |
-| Approve sales | ❌ | ✅ | ✅ |
-| Manage users (CRUD) | ❌ | ✅ | ✅ |
-| Manage products/inventory | ❌ | ✅ | ✅ |
-| Export reports | ❌ | ✅ | ✅ |
-| Create/edit admins | ❌ | ❌ | ✅ |
-| System settings, backup, activity log, security | ❌ | ❌ | ✅ |
+### Code changes
 
-### Data Model (localStorage, Phase 1)
+- Replace `src/lib/store.ts` localStorage facade with `src/lib/db.ts` thin Supabase query helpers (`listSales`, `addSale`, `approveSale`, `listProducts`, `upsertProduct`, etc.).
+- Rewrite `src/lib/auth.tsx` to use Supabase auth + profile/role loading.
+- Update every route currently importing from `@/lib/store` to use the new async helpers via TanStack Query (`useQuery` / `useMutation`).
+- Update `AuthForm` to add a password field + Google button using the Lovable OAuth helper.
+- Keep all current routes/UI/role-gating intact — only the data source changes.
+- Activity logging now writes to the DB and is visible to admin+.
 
-- `users`: `{ id, fullName, email, role, createdAt }[]`
-- `session`: `{ userId }`
-- `sales`: existing 124 rows + new ones, each tagged with `ownerId` (legacy 124 owned by a seeded demo user)
-- `products`, `customers`, `inventory`, `activity_log`, `settings`: localStorage-backed
-- Switch to Lovable Cloud later — components use a single `useStore()` facade so nothing changes when we migrate.
+### Out of scope
 
-### Components
+- Email magic-link (kept password-based for simplicity; can swap to magic link later).
+- Realtime sync across tabs (can add `supabase.channel` later).
+- Backup/restore now operates on DB tables (export JSON of all tables, restore via admin RPC) — kept functional but as a super-admin only feature.
 
-- `AuthProvider` + `useAuth()` — current user, login(name,email), signup, logout, googleSignIn (demo)
-- `AuthGuard` (logged-in required) and existing `RoleGuard`
-- `LoginForm`, `SignupForm`, `GoogleButton`
-- `UserTable`, `ProductTable`, `InventoryTable`, `ApprovalsList`, `ActivityLog`
-- `SaleForm` (add/edit)
-- `ProfilePage`
-- Header: replace demo role dropdown with **user avatar menu** (name, email, role badge, Logout). Keep dev-only role impersonator visible to super admin.
+### Tradeoffs / things to confirm
 
-### Out of Scope (now)
+- Existing localStorage data won't migrate — accounts created in the old demo are gone after this switch (the seeded 124 sales are re-seeded server-side).
+- Switching to password-based login is the cleanest path; passwordless email-link is doable as a follow-up if you want it.
 
-- Real Google OAuth (needs Lovable Cloud + Google credentials)
-- Password reset, email verification
-- Real database backup
-- Hard security (anyone could edit localStorage); fine for demo, not production
-
-### Next Step
-
-After approval I'll:
-1. Build AuthProvider + login/signup pages + Google demo button
-2. Wire AuthGuard across the app, replace role dropdown with user menu
-3. Build the new admin/super-admin pages and the User CRUD + Sale CRUD + Profile flows
-4. Seed legacy 124 sales to a demo user so charts keep working
+After you approve, I'll run the migration, rewrite the auth + data layer, and update the routes.
