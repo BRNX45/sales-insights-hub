@@ -90,8 +90,22 @@ export function ensureSeeded(): Promise<void> {
 // Users / session — auth.tsx handles these now, but keep stubs
 export const getUsers = () => cache.users;
 export const setUsers = async (u: StoredUser[]) => {
+  const prev = cache.users;
   cache.users = u; notify();
-  // Sync role changes only (profiles managed via signup trigger)
+  // Sync role changes to user_roles; profile fields rarely change here
+  for (const next of u) {
+    const old = prev.find((p) => p.id === next.id);
+    if (old && old.role !== next.role) {
+      await supabase.from("user_roles").delete().eq("user_id", next.id);
+      await supabase.from("user_roles").insert({ user_id: next.id, role: next.role });
+    }
+  }
+  // Handle deletions (best-effort: delete profile cascades user_roles)
+  for (const old of prev) {
+    if (!u.find((n) => n.id === old.id)) {
+      await supabase.from("profiles").delete().eq("id", old.id);
+    }
+  }
 };
 export const getSession = () => null;
 export const setSession = () => {};
