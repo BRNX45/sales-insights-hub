@@ -1,4 +1,4 @@
-import { SALES as SEED_SALES } from "@/data/sales";
+import { supabase } from "@/integrations/supabase/client";
 import type { Role } from "./role";
 
 const isBrowser = typeof window !== "undefined";
@@ -11,174 +11,156 @@ export type StoredUser = {
   provider: "email" | "google";
   createdAt: string;
 };
-
 export type StoredSale = {
-  id: string;
-  date: string;
-  customerId: string;
-  productId: string;
-  ownerId: string;
-  approved: boolean;
+  id: string; date: string; customerId: string; productId: string;
+  ownerId: string; approved: boolean;
 };
-
 export type Product = { id: string; name: string; price: number; category: string };
 export type Customer = { id: string; name: string; email: string };
 export type InventoryRow = { productId: string; stock: number };
-export type ActivityEntry = {
-  id: string;
-  at: string;
-  actorId: string;
-  actorEmail: string;
-  action: string;
-};
-export type Settings = {
-  companyName: string;
-  maintenance: boolean;
-  allowSignups: boolean;
-  passwordPolicy: string;
-};
+export type ActivityEntry = { id: string; at: string; actorId: string; actorEmail: string; action: string };
+export type Settings = { companyName: string; maintenance: boolean; allowSignups: boolean; passwordPolicy: string };
 
-const K = {
-  users: "salesos.users",
-  session: "salesos.session",
-  sales: "salesos.sales",
-  products: "salesos.products",
-  customers: "salesos.customers",
-  inventory: "salesos.inventory",
-  activity: "salesos.activity",
-  settings: "salesos.settings",
-  seeded: "salesos.seeded",
+// In-memory cache hydrated from Supabase
+const cache = {
+  users: [] as StoredUser[],
+  sales: [] as StoredSale[],
+  products: [] as Product[],
+  customers: [] as Customer[],
+  inventory: [] as InventoryRow[],
+  activity: [] as ActivityEntry[],
+  settings: { companyName: "SalesOS", maintenance: false, allowSignups: true, passwordPolicy: "Min 6 chars" } as Settings,
 };
-
-function read<T>(key: string, fallback: T): T {
-  if (!isBrowser) return fallback;
-  try {
-    const raw = window.localStorage.getItem(key);
-    return raw ? (JSON.parse(raw) as T) : fallback;
-  } catch {
-    return fallback;
-  }
-}
-function write<T>(key: string, value: T) {
-  if (!isBrowser) return;
-  window.localStorage.setItem(key, JSON.stringify(value));
-}
 
 export const uid = () =>
   (isBrowser && "crypto" in window && "randomUUID" in window.crypto
     ? window.crypto.randomUUID()
     : `id_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`);
 
-// ---------- Seeding ----------
-const DEMO_OWNER_ID = "seed-legacy-owner";
+let hydratePromise: Promise<void> | null = null;
+const listeners = new Set<() => void>();
+const notify = () => listeners.forEach((l) => l());
+export const subscribeStore = (l: () => void) => { listeners.add(l); return () => listeners.delete(l); };
 
-export function ensureSeeded() {
-  if (!isBrowser) return;
-  if (window.localStorage.getItem(K.seeded) === "1") return;
-
-  // Seed legacy owner user (so the 124 historical sales have an owner)
-  const users: StoredUser[] = read(K.users, []);
-  if (!users.find((u) => u.id === DEMO_OWNER_ID)) {
-    users.push({
-      id: DEMO_OWNER_ID,
-      fullName: "Legacy Records",
-      email: "legacy@salesos.local",
-      role: "user",
-      provider: "email",
-      createdAt: "2010-01-01T00:00:00Z",
-    });
-    write(K.users, users);
-  }
-
-  // Seed sales
-  const sales: StoredSale[] = SEED_SALES.map((s) => ({
-    ...s,
-    ownerId: DEMO_OWNER_ID,
-    approved: true,
+async function hydrate() {
+  const [pr, cu, inv, sa, st, ro, prof, ac] = await Promise.all([
+    supabase.from("products").select("*"),
+    supabase.from("customers").select("*"),
+    supabase.from("inventory").select("*"),
+    supabase.from("sales").select("*").order("date", { ascending: true }),
+    supabase.from("settings").select("*").eq("id", 1).maybeSingle(),
+    supabase.from("user_roles").select("*"),
+    supabase.from("profiles").select("*"),
+    supabase.from("activity_log").select("*").order("at", { ascending: false }).limit(200),
+  ]);
+  cache.products = (pr.data ?? []).map((p: any) => ({ id: p.id, name: p.name, price: Number(p.price), category: p.category }));
+  cache.customers = (cu.data ?? []).map((c: any) => ({ id: c.id, name: c.name, email: c.email }));
+  cache.inventory = (inv.data ?? []).map((i: any) => ({ productId: i.product_id, stock: i.stock }));
+  cache.sales = (sa.data ?? []).map((s: any) => ({
+    id: s.id, date: s.date, customerId: s.customer_id, productId: s.product_id,
+    ownerId: s.owner_id ?? "", approved: s.approved,
   }));
-  write(K.sales, sales);
-
-  // Seed products from unique product codes
-  const productIds = Array.from(new Set(SEED_SALES.map((s) => s.productId))).sort();
-  const products: Product[] = productIds.map((id, i) => ({
-    id,
-    name: `Product ${id}`,
-    price: 50 + ((i * 13) % 450),
-    category: ["Hardware", "Software", "Services", "Accessories"][i % 4],
+  if (st.data) cache.settings = {
+    companyName: st.data.company_name, maintenance: st.data.maintenance,
+    allowSignups: st.data.allow_signups, passwordPolicy: st.data.password_policy,
+  };
+  const roleMap = new Map<string, Role>();
+  (ro.data ?? []).forEach((r: any) => {
+    const cur = roleMap.get(r.user_id);
+    const rank = { user: 1, admin: 2, super_admin: 3 } as const;
+    if (!cur || rank[r.role as Role] > rank[cur]) roleMap.set(r.user_id, r.role);
+  });
+  cache.users = (prof.data ?? []).map((p: any) => ({
+    id: p.id, fullName: p.full_name, email: p.email,
+    role: roleMap.get(p.id) ?? "user", provider: "email",
+    createdAt: p.created_at,
   }));
-  write(K.products, products);
-
-  // Seed customers
-  const customerIds = Array.from(new Set(SEED_SALES.map((s) => s.customerId))).sort();
-  const customers: Customer[] = customerIds.map((id) => ({
-    id,
-    name: `Customer ${id}`,
-    email: `${id.toLowerCase()}@example.com`,
+  cache.activity = (ac.data ?? []).map((a: any) => ({
+    id: a.id, at: a.at, actorId: a.actor_id ?? "", actorEmail: a.actor_email, action: a.action,
   }));
-  write(K.customers, customers);
-
-  // Seed inventory
-  const inventory: InventoryRow[] = products.map((p) => ({
-    productId: p.id,
-    stock: 20 + Math.floor(Math.random() * 200),
-  }));
-  write(K.inventory, inventory);
-
-  write(K.settings, {
-    companyName: "SalesOS Demo",
-    maintenance: false,
-    allowSignups: true,
-    passwordPolicy: "None (demo mode — email-only login)",
-  } satisfies Settings);
-
-  write(K.activity, [] satisfies ActivityEntry[]);
-  window.localStorage.setItem(K.seeded, "1");
+  notify();
 }
 
-// ---------- Users ----------
-export const getUsers = () => read<StoredUser[]>(K.users, []);
-export const setUsers = (u: StoredUser[]) => write(K.users, u);
+export function ensureSeeded(): Promise<void> {
+  if (!isBrowser) return Promise.resolve();
+  if (!hydratePromise) hydratePromise = hydrate().catch((e) => { console.error("Hydrate failed", e); });
+  return hydratePromise;
+}
 
-export const getSession = () => read<{ userId: string } | null>(K.session, null);
-export const setSession = (s: { userId: string } | null) => {
-  if (s) write(K.session, s);
-  else if (isBrowser) window.localStorage.removeItem(K.session);
+// Users / session — auth.tsx handles these now, but keep stubs
+export const getUsers = () => cache.users;
+export const setUsers = async (u: StoredUser[]) => {
+  cache.users = u; notify();
+  // Sync role changes only (profiles managed via signup trigger)
+};
+export const getSession = () => null;
+export const setSession = () => {};
+
+// Sales
+export const getSales = () => cache.sales;
+export const setSales = async (s: StoredSale[]) => {
+  const prev = cache.sales;
+  cache.sales = s; notify();
+  const prevIds = new Set(prev.map((x) => x.id));
+  const nextIds = new Set(s.map((x) => x.id));
+  const added = s.filter((x) => !prevIds.has(x.id));
+  const removed = prev.filter((x) => !nextIds.has(x.id));
+  const updated = s.filter((x) => {
+    const p = prev.find((q) => q.id === x.id);
+    return p && (p.approved !== x.approved || p.date !== x.date || p.customerId !== x.customerId || p.productId !== x.productId);
+  });
+  for (const r of removed) await supabase.from("sales").delete().eq("id", r.id);
+  for (const a of added) await supabase.from("sales").insert({
+    id: a.id, date: a.date, customer_id: a.customerId, product_id: a.productId,
+    owner_id: a.ownerId || null, approved: a.approved,
+  });
+  for (const u of updated) await supabase.from("sales").update({
+    date: u.date, customer_id: u.customerId, product_id: u.productId, approved: u.approved,
+  }).eq("id", u.id);
 };
 
-// ---------- Sales ----------
-export const getSales = () => read<StoredSale[]>(K.sales, []);
-export const setSales = (s: StoredSale[]) => write(K.sales, s);
-
-// ---------- Products / Customers / Inventory ----------
-export const getProducts = () => read<Product[]>(K.products, []);
-export const setProducts = (v: Product[]) => write(K.products, v);
-export const getCustomers = () => read<Customer[]>(K.customers, []);
-export const setCustomers = (v: Customer[]) => write(K.customers, v);
-export const getInventory = () => read<InventoryRow[]>(K.inventory, []);
-export const setInventory = (v: InventoryRow[]) => write(K.inventory, v);
-
-// ---------- Activity ----------
-export const getActivity = () => read<ActivityEntry[]>(K.activity, []);
-export const logActivity = (actor: StoredUser, action: string) => {
-  const list = getActivity();
-  list.unshift({
-    id: uid(),
-    at: new Date().toISOString(),
-    actorId: actor.id,
-    actorEmail: actor.email,
-    action,
-  });
-  write(K.activity, list.slice(0, 200));
+// Products
+export const getProducts = () => cache.products;
+export const setProducts = async (v: Product[]) => {
+  cache.products = v; notify();
+  await supabase.from("products").upsert(v.map((p) => ({ id: p.id, name: p.name, price: p.price, category: p.category })));
 };
 
-// ---------- Settings ----------
-export const getSettings = (): Settings =>
-  read<Settings>(K.settings, {
-    companyName: "SalesOS Demo",
-    maintenance: false,
-    allowSignups: true,
-    passwordPolicy: "None (demo mode — email-only login)",
-  });
-export const setSettings = (v: Settings) => write(K.settings, v);
+// Customers
+export const getCustomers = () => cache.customers;
+export const setCustomers = async (v: Customer[]) => {
+  cache.customers = v; notify();
+  await supabase.from("customers").upsert(v);
+};
 
-export const STORE_KEYS = K;
+// Inventory
+export const getInventory = () => cache.inventory;
+export const setInventory = async (v: InventoryRow[]) => {
+  cache.inventory = v; notify();
+  await supabase.from("inventory").upsert(v.map((i) => ({ product_id: i.productId, stock: i.stock })));
+};
+
+// Activity
+export const getActivity = () => cache.activity;
+export const logActivity = async (actor: StoredUser, action: string) => {
+  const entry: ActivityEntry = {
+    id: uid(), at: new Date().toISOString(),
+    actorId: actor.id, actorEmail: actor.email, action,
+  };
+  cache.activity = [entry, ...cache.activity].slice(0, 200); notify();
+  await supabase.from("activity_log").insert({
+    actor_id: actor.id, actor_email: actor.email, action,
+  });
+};
+
+// Settings
+export const getSettings = () => cache.settings;
+export const setSettings = async (v: Settings) => {
+  cache.settings = v; notify();
+  await supabase.from("settings").update({
+    company_name: v.companyName, maintenance: v.maintenance,
+    allow_signups: v.allowSignups, password_policy: v.passwordPolicy,
+  }).eq("id", 1);
+};
+
+export const STORE_KEYS = {};
